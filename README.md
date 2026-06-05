@@ -140,6 +140,34 @@ Go to **Settings > MCP > Add new MCP server** and add the same entry as above.
 
 ---
 
+## First Use
+
+1. **Open Houdini** — the plugin loads automatically via the package file
+2. **Add the shelf tab** — click **+** at the end of the shelf bar → **Shelves** → select **Houdini MCP** (one-time setup)
+3. **Start the server** — click **Toggle MCP Server**; a dialog confirms it's running on `localhost:9876`
+4. **Open Claude Desktop** — go to the MCP tools panel and confirm the `houdini` server is connected. Claude will have access to tools for getting scene info, creating and modifying nodes, executing Python in Houdini, and rendering. If you set up OPUS, it can also generate and import 3D assets.
+5. **Stop the server** — click **Toggle MCP Server** again when done
+
+### Example Prompts
+
+```
+What's in my current Houdini scene?
+```
+```
+Create a grid SOP inside a new geo node and apply a mountain SOP to it
+```
+```
+Write and run a Python script in Houdini that creates 10 scattered spheres with random sizes
+```
+```
+Render a quad view of the scene and show me the result
+```
+```
+Create an OPUS sofa with a red color and import it into the scene
+```
+
+---
+
 ## OPUS Integration
 
 OPUS provides a large set of procedural furniture and environmental assets.
