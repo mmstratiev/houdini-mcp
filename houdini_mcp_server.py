@@ -16,7 +16,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 # Add the virtual environment's site-packages to Python's path
 venv_site_packages = os.path.join(script_dir, '.venv', 'Lib', 'site-packages')
 if os.path.exists(venv_site_packages):
-    sys.path.insert(0, venv_site_packages)
+    site.addsitedir(venv_site_packages)
     print(f"Added {venv_site_packages} to sys.path", file=sys.stderr)
 else:
     print(f"Warning: Virtual environment site-packages not found at {venv_site_packages}", file=sys.stderr)
@@ -45,12 +45,12 @@ except ImportError:
     print("Warning: Langchain not found. opus_get_model_params_schema tool will be limited.", file=sys.stderr)
 
 # Load environment variables from urls.env located in the script's directory
-dotenv_path = os.path.join(script_dir, 'urls.env')
+dotenv_path = os.path.join(script_dir, '.env')
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path=dotenv_path)
     print(f"Loaded environment variables from {dotenv_path}", file=sys.stderr)
 else:
-    print(f"Warning: urls.env not found at {dotenv_path}", file=sys.stderr)
+    print(f"Warning: .env not found at {dotenv_path}", file=sys.stderr)
 
 # --- Use RapidAPI variables --- 
 RAPIDAPI_HOST_URL = os.getenv("RAPIDAPI_HOST_URL") # e.g., https://opus5.p.rapidapi.com/
@@ -531,10 +531,7 @@ def get_houdini_connection() -> HoudiniConnection:
 
 
 # Now define the MCP server that Claude will talk to over stdio
-mcp = FastMCP(
-    "HoudiniMCP",
-    description="A bridging server that connects Claude to Houdini via MCP stdio + TCP, with OPUS API integration."
-)
+mcp = FastMCP("HoudiniMCP")
 
 @asynccontextmanager
 async def server_lifespan(app: FastMCP):
@@ -891,11 +888,10 @@ def main():
     """Run the MCP server on stdio."""
     # Check necessary RapidAPI variables are set before running
     if not RAPIDAPI_HOST_URL or not RAPIDAPI_HOST or not RAPIDAPI_KEY:
-         logger.critical("RAPIDAPI_HOST_URL, RAPIDAPI_HOST, and RAPIDAPI_KEY environment variables are not set. Please configure urls.env.")
-         logger.critical("Server will not start.")
-         sys.exit(1) # Exit if critical configuration is missing
-         
-    logger.info(f"Using RapidAPI Host URL: {RAPIDAPI_HOST_URL}")
+        logger.warning("RAPIDAPI_HOST_URL, RAPIDAPI_HOST, and RAPIDAPI_KEY not set. OPUS features will be unavailable.")
+
+    if RAPIDAPI_HOST_URL:
+        logger.info(f"Using RapidAPI Host URL: {RAPIDAPI_HOST_URL}")
     logger.info(f"Using RapidAPI Host Header: {RAPIDAPI_HOST}")
     logger.info(f"Langchain available: {LANGCHAIN_AVAILABLE}")
     mcp.run()

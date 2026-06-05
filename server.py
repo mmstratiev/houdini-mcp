@@ -9,7 +9,11 @@ import traceback
 import os
 import shutil
 import sys
-from PySide2 import QtWidgets, QtCore
+# Houdini 20+ ships Qt 6 (PySide6); earlier versions ship Qt 5 (PySide2)
+try:
+    from PySide6 import QtWidgets, QtCore
+except ImportError:
+    from PySide2 import QtWidgets, QtCore
 import io
 from contextlib import redirect_stdout, redirect_stderr
 import base64 # Added for encoding

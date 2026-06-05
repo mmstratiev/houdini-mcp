@@ -1,124 +1,119 @@
-# HoudiniMCP – Connect Houdini to Claude via Model Context Protocol
+# HoudiniMCP – Connect Houdini to an AI via Model Context Protocol
 
-**HoudiniMCP** allows you to control **SideFX Houdini** from **Claude** using the **Model Context Protocol (MCP)**. It consists of:
+**HoudiniMCP** allows you to control **SideFX Houdini** from an AI assistant using the **Model Context Protocol (MCP)**. It consists of:
 
-1. A **Houdini plugin** (Python package) that listens on a local port (default `localhost:9876`) and handles commands (creating and modifying nodes, executing code, etc.).  
-2. An **MCP bridge script** you run via **uv** (or system Python) that communicates via **std**in/**std**out with Claude and **TCP** with Houdini.
-
-Below are the complete instructions for setting up Houdini, uv, and Claude Desktop.
-
----
-
-## Table of Contents
-
-1. [Requirements](#requirements)  
-2. [Houdini MCP Plugin Installation](#houdini-mcp-plugin-installation)  
-   1. [Folder Layout](#folder-layout)  
-   2. [Shelf Tool (Optional)](#shelf-tool-optional)  
-   3. [Packages Integration (Optional)](#packages-integration-optional)  
-3. [Installing the `mcp` Python Package](#installing-the-mcp-python-package)  
-   1. [Using uv on Windows](#using-uv-on-windows)  
-   2. [Using pip Directly](#using-pip-directly)  
-4. [Bridging Script and Claude for Desktop](#bridging-script-and-claude-for-desktop)  
-   1. [The Bridging Script](#the-bridging-script)  
-   2. [Telling Claude Desktop to Use Your Script](#telling-claude-desktop-to-use-your-script)  
-5. [Testing & Usage](#testing--usage)  
-6. [Troubleshooting](#troubleshooting)
+1. A **Houdini plugin** that listens on `localhost:9876` and handles commands (creating nodes, executing code, rendering, etc.).
+2. An **MCP bridge script** (`houdini_mcp_server.py`) that communicates over stdio with the AI client and over TCP with Houdini.
 
 ---
 
 ## Requirements
 
-- **SideFX Houdini**  
-- **uv** 
-- **Claude Desktop** (latest version)
+- **SideFX Houdini**
+- **Python 3.x** (to run the install script)
+- An **MCP-compatible AI client** (Claude Desktop, Cursor, etc.)
 
 ---
 
-## 1. Houdini MCP Plugin Installation
+## Automatic Installation
 
-### 1.1 Folder Layout
-
-Create a folder in your Houdini scripts directory:
-C:/Users/YourUserName/Documents/houdini19.5/scripts/python/houdinimcp/
-
-Inside **`houdinimcp/`**, place:
-
-- **`__init__.py`** – handles plugin initialization (start/stop server)  
-- **`server.py`** – defines the `HoudiniMCPServer` (listening on port `9876`)  
-- **`houdini_mcp_server.py`** – optional bridging script (some prefer a separate location)
-- **`pyproject.toml`**
-
-
-*(If you prefer, `houdini_mcp_server.py` can live elsewhere. As long as you know its path for running with `uv`.)*
-
-### 1.2 Shelf Tool 
-
-create a **Shelf Tool** to toggle the server in Houdini:
-
-1. **Right-click** a shelf → **"New Shelf..."** 
-
-Name it "MCP" or something similar
-
-
-
-2. **Right-click** again → **"New Tool..."** 
-Name: "Toggle MCP Server"
-Label: "MCP"
-
-3. Under **Script**, insert something like:
-
-```python
-   import hou
-   import houdinimcp
-
-   if hasattr(hou.session, "houdinimcp_server") and hou.session.houdinimcp_server:
-       houdinimcp.stop_server()
-       hou.ui.displayMessage("Houdini MCP Server stopped")
-   else:
-       houdinimcp.start_server()
-       hou.ui.displayMessage("Houdini MCP Server started on localhost:9876")
+Run the install script from the repo root:
 
 ```
+python install.py
+```
 
+This will:
+- Detect your Houdini version (prompts if multiple are found)
+- Copy all plugin files to `~/Documents/houdiniXX.X/scripts/python/houdinimcp/`
+- Install Python dependencies via `uv` (installs `uv` automatically if not found)
+- Create `packages/houdinimcp.json` so Houdini loads the plugin at startup
+- Create the **HoudiniMCP** shelf tool with a Toggle MCP Server button
 
-### 1.3 Packages Integration 
+After running, restart Houdini and [configure your MCP client](#configuring-your-mcp-client).
 
-If you want Houdini to auto-load your plugin at startup, create a package file named houdinimcp.json in the Houdini packages folder (e.g. C:/Users/YourUserName/Documents/houdini19.5/packages/):
+To uninstall:
+```
+python uninstall.py
+```
+
+---
+
+## Manual Installation
+
+### 1. Plugin Files
+
+Create the plugin folder:
+```
+C:/Users/<YourUserName>/Documents/houdini21.0/scripts/python/houdinimcp/
+```
+
+Copy these files from the repo into it:
+
+- **`__init__.py`** – handles plugin initialization (start/stop server)
+- **`server.py`** – defines the `HoudiniMCPServer` (listening on port `9876`)
+- **`houdini_mcp_server.py`** – MCP bridge script
+- **`HoudiniMCPRender.py`** – handles render operations and output
+- **`pyproject.toml`**
+- **`uv.lock`**
+- **`.python-version`**
+- **`.env`** – copy `.env.example` and fill in your API key
+
+### 2. Install Dependencies
+
+Install [uv](https://docs.astral.sh/uv/) if you don't have it:
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Then install dependencies from the plugin directory:
+```
+cd C:/Users/<YourUserName>/Documents/houdini21.0/scripts/python/houdinimcp/
+uv sync
+```
+
+### 3. Houdini Package
+
+Create `C:/Users/<YourUserName>/Documents/houdini21.0/packages/houdinimcp.json`:
+
 ```json
 {
-  "path": "$HOME/houdini19.5/scripts/python/houdinimcp",
+  "path": "$HOME/houdini21.0/scripts/python",
   "load_package_once": true,
   "version": "0.1",
   "env": [
     {
-      "PYTHONPATH": "$PYTHONPATH;$HOME/houdini19.5/scripts/python"
+      "PYTHONPATH": "$PYTHONPATH;$HOME/houdini21.0/scripts/python"
     }
   ]
 }
 ```
 
-### 2 Using uv on Windows
-```powershell
-  # 1) Install uv 
-  powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+### 4. Shelf Tool
 
-  # 2) add uv to your PATH (depends on the user instructions) from cmd
-  set Path=C:\Users\<YourUserName>\.local\bin;%Path%
+1. **Right-click** the shelf bar → **New Shelf** → name it `HoudiniMCP`
+2. **Right-click** the new shelf → **New Tool** → Name: `Toggle MCP Server`
+3. Under **Script**, paste:
 
-  # 3) In a uv project or the plugin directory
-  cd C:/Users/<YourUserName>/Documents/houdini19.5/scripts/python/houdinimcp/
-  uv add "mcp[cli]"
+```python
+import hou
+import houdinimcp
 
-  # 4) Verify
-  uv run python -c "import mcp.server.fastmcp; print('MCP is installed!')"
+if hasattr(hou.session, "houdinimcp_server") and hou.session.houdinimcp_server:
+    houdinimcp.stop_server()
+    hou.ui.displayMessage("Houdini MCP Server stopped")
+else:
+    houdinimcp.start_server()
+    hou.ui.displayMessage("Houdini MCP Server started on localhost:9876")
 ```
-### 3 Telling Claude for Desktop to Use Your Script
-Go to File > Settings > Developer > Edit Config > 
-Open or create:
-claude_desktop_config.json
 
-Add an entry:
+---
+
+## Configuring Your MCP Client
+
+### Claude Desktop
+
+Go to **File > Settings > Developer > Edit Config** and open `claude_desktop_config.json`. Add:
 
 ```json
 {
@@ -127,31 +122,34 @@ Add an entry:
       "command": "uv",
       "args": [
         "run",
+        "--project",
+        "C:/Users/<YourUserName>/Documents/houdini21.0/scripts/python/houdinimcp",
         "python",
-        "C:/Users/<YourUserName>/Documents/houdini19.5/scripts/python/houdinimcp/houdini_mcp_server.py"
+        "C:/Users/<YourUserName>/Documents/houdini21.0/scripts/python/houdinimcp/houdini_mcp_server.py"
       ]
     }
   }
 }
 ```
-if uv run was successful and claude failed to load mcp, make sure claude is using the same python version, use:
-```cmd
-  python -c "import sys; print(sys.executable)"
-``` 
-to find python, and replace "python" with the path you got. 
 
-### 4 Use Cursor
-Go to Settings > MCP > add new MCP server
-add the same entry in claude_desktop_config.json
-you might need to stop claude and restart houdini and the server
+The `--project` flag tells uv where to find the `.python-version` and `uv.lock` files, ensuring the correct Python version and dependencies are used.
 
-### 5 OPUS integration
+### Cursor
 
-OPUS provide a large set of furniture and environmental procedural assets.
-you will need a Rapid API key to log in. Create an account at: [RapidAPI](https://rapidapi.com/)
-Subscribe to OPUS API at: [OPUS API Subscribe](https://rapidapi.com/genel-gi78OM1rB/api/opus5/pricing)
-Get your Rapid API key at [OPUS API](https://rapidapi.com/genel-gi78OM1rB/api/opus5)
-add the key to urls.env
-### 4 Acknowledgement
+Go to **Settings > MCP > Add new MCP server** and add the same entry as above.
 
-Houdini-MCP was built following [blender-mcp](https://github.com/ahujasid/blender-mcp). We thank them for the contribution.
+---
+
+## OPUS Integration
+
+OPUS provides a large set of procedural furniture and environmental assets.
+
+1. Create an account at [RapidAPI](https://rapidapi.com/)
+2. Subscribe at [OPUS API](https://rapidapi.com/genel-gi78OM1rB/api/opus5/pricing)
+3. Copy `.env.example` to `.env` in the plugin folder and set `RAPIDAPI_KEY` to your key
+
+---
+
+## Acknowledgement
+
+HoudiniMCP was built following [blender-mcp](https://github.com/ahujasid/blender-mcp). We thank them for the contribution.
